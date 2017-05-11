@@ -10,12 +10,14 @@ import (
 	"time"
 )
 
+// Item is a cache item
 type Item struct {
 	Value  interface{}
 	Expiry time.Time
 	Delta  time.Duration
 }
 
+// Cache is the interface to the backing cache
 type Cache interface {
 	// Cache Read
 	Get(key string) (Item, error)
@@ -24,6 +26,7 @@ type Cache interface {
 	Set(key string, item Item) error
 }
 
+// XFetcher provides stampede protection for items in a cache
 type XFetcher struct {
 	cache Cache
 	r     *rand.Rand
@@ -31,15 +34,18 @@ type XFetcher struct {
 
 const Beta = 1
 
+// New returns a new XFetcher protecting the cache.
 func New(cache Cache) *XFetcher {
 	return &XFetcher{
 		cache: cache,
 		r:     rand.New(rand.NewSource(time.Now().UnixNano())),
 	}
-
 }
 
-func (xf *XFetcher) Fetch(key string, recompute func() (interface{}, time.Duration, error)) (interface{}, error) {
+// Fetch retrieves `key`, recomputing it if needed.  The `recompute` function
+// should compute the value for key, returning also the desired time-to-live and any
+// error.
+func (xf *XFetcher) Fetch(key string, recompute func() (value interface{}, ttl time.Duration, err error)) (interface{}, error) {
 
 	item, err := xf.cache.Get(key)
 
