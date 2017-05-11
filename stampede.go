@@ -30,15 +30,19 @@ type Cache interface {
 type XFetcher struct {
 	cache Cache
 	r     *rand.Rand
+	beta  float64
 }
 
 const Beta = 1
 
-// New returns a new XFetcher protecting the cache.
-func New(cache Cache) *XFetcher {
+// New returns a new XFetcher protecting the cache.  The beta parameter
+// controls early expiration vs. stampede prevention.  1 is a good default.
+// For more information, see the referenced paper.
+func New(cache Cache, beta float64) *XFetcher {
 	return &XFetcher{
 		cache: cache,
 		r:     rand.New(rand.NewSource(time.Now().UnixNano())),
+		beta:  beta,
 	}
 }
 
@@ -49,7 +53,7 @@ func (xf *XFetcher) Fetch(key string, recompute func() (value interface{}, ttl t
 
 	item, err := xf.cache.Get(key)
 
-	if err != nil || time.Now().Add(-time.Duration(float64(item.Delta*Beta)*math.Log(xf.r.Float64()))).After(item.Expiry) {
+	if err != nil || time.Now().Add(-time.Duration(float64(item.Delta)*xf.beta*math.Log(xf.r.Float64()))).After(item.Expiry) {
 		start := time.Now()
 		value, ttl, err := recompute()
 		if err != nil {
