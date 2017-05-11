@@ -26,10 +26,18 @@ type Cache interface {
 
 type XFetcher struct {
 	cache Cache
-	r     rand.Rand
+	r     *rand.Rand
 }
 
 const Beta = 1
+
+func New(cache Cache) *XFetcher {
+	return &XFetcher{
+		cache: cache,
+		r:     rand.New(rand.NewSource(time.Now().UnixNano())),
+	}
+
+}
 
 func (xf *XFetcher) Fetch(key string, recompute func() (interface{}, time.Duration, error)) (interface{}, error) {
 
